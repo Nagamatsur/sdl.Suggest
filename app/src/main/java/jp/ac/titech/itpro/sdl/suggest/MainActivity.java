@@ -98,19 +98,19 @@ public class MainActivity extends AppCompatActivity {
 
     private static class SuggestThread extends Thread {
 
-        private final Suggester suggest;
+        private final Suggester suggester;
         private final SuggestHandler handler;
         private final String query;
 
         SuggestThread(String baseUrl, SuggestHandler handler, String query) {
-            this.suggest = new Suggester(baseUrl);
+            this.suggester = new Suggester(baseUrl);
             this.handler = handler;
             this.query = query;
         }
 
         @Override
         public void run() {
-            List<String> result = suggest.suggest(query);
+            List<String> result = suggester.suggest(query);
             handler.sendMessage(handler.obtainMessage(MSG_RESULT, result));
         }
     }
