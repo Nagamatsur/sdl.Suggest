@@ -2,9 +2,8 @@ package jp.ac.titech.itpro.sdl.suggest;
 
 import android.app.SearchManager;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -20,10 +19,6 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private final static String TAG = MainActivity.class.getSimpleName();
-
-    private final static int MSG_RESULT = 1234;
-
-    private final SuggestHandler handler = new SuggestHandler(this);
 
     private EditText input;
     private ArrayAdapter<String> adapter;
@@ -43,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
                 String query = input.getText().toString().trim();
                 if (!query.isEmpty()) {
                     String suggestUrl = getResources().getString(R.string.suggest_url);
-                    new SuggestThread(suggestUrl, handler, query).start();
+                    new SuggestTask(MainActivity.this, suggestUrl).execute(query);
                 }
             }
         });
@@ -75,43 +70,28 @@ public class MainActivity extends AppCompatActivity {
         input.selectAll();
     }
 
+    private static class SuggestTask extends AsyncTask<String, Void, List<String>> {
 
-    private static class SuggestHandler extends Handler {
         private WeakReference<MainActivity> activityRef;
+        private final Suggester suggester;
 
-        SuggestHandler(MainActivity activity) {
-            activityRef = new WeakReference<>(activity);
+        SuggestTask(MainActivity activity, String baseUrl) {
+            this.activityRef = new WeakReference<>(activity);
+            this.suggester = new Suggester(baseUrl);
         }
 
         @Override
-        @SuppressWarnings("unchecked")
-        public void handleMessage(Message msg) {
+        protected List<String> doInBackground(String... strings) {
+            return suggester.suggest(strings[0]);
+        }
+
+        @Override
+        protected void onPostExecute(List<String> result) {
             MainActivity activity = activityRef.get();
             if (activity == null || activity.isFinishing()) {
                 return;
             }
-            if (msg.what == MSG_RESULT) {
-                activity.showResult((List<String>) msg.obj);
-            }
-        }
-    }
-
-    private static class SuggestThread extends Thread {
-
-        private final Suggester suggest;
-        private final SuggestHandler handler;
-        private final String query;
-
-        SuggestThread(String baseUrl, SuggestHandler handler, String query) {
-            this.suggest = new Suggester(baseUrl);
-            this.handler = handler;
-            this.query = query;
-        }
-
-        @Override
-        public void run() {
-            List<String> result = suggest.suggest(query);
-            handler.sendMessage(handler.obtainMessage(MSG_RESULT, result));
+            activity.showResult(result);
         }
     }
 }
